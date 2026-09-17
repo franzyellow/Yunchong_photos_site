@@ -86,12 +86,23 @@ def upload(folder: str):
         print("no images found")
         sys.exit(1)
 
-    print(f"uploading {len(images)} images for year {year}...")
-    client = get_r2_client()
     data = load_photos()
     data.setdefault(year, [])
 
-    for img_path in images:
+    # 按文件名跳过 photos.json 里已存在的照片，避免重复上传和产生重复条目
+    existing = {entry["src"].rsplit("/", 1)[-1] for entry in data[year]}
+    new_images = [p for p in images if p.name not in existing]
+    skipped = len(images) - len(new_images)
+    if skipped:
+        print(f"skipping {skipped} already-uploaded images")
+    if not new_images:
+        print("no new images to upload")
+        return
+
+    print(f"uploading {len(new_images)} images for year {year}...")
+    client = get_r2_client()
+
+    for img_path in new_images:
         full_url, thumb_url = process_and_upload(client, img_path, year)
         data[year].append({
             "src": full_url,
